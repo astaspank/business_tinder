@@ -26,7 +26,7 @@ import telebot
 import sqlite3
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = '6617423966:AAFoXM9Sc3cgBkYN1Fv1TbRgS3Lh2fp_Q7c'
+TOKEN = 'YOUR_TOKEN'
 bot = telebot.TeleBot(TOKEN)
 
 # Словарь для временного хранения данных пользователей
