@@ -1,0 +1,128 @@
+<html>
+<head>
+<title>main.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cc7832;}
+.s1 { color: #a9b7c6;}
+.s2 { color: #808080;}
+.s3 { color: #6a8759;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+main.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">sqlite3</span>
+
+<span class="s0">def </span><span class="s1">create_database():</span>
+    <span class="s2"># Подключаемся к файлу базы данных (если его нет, он будет создан)</span>
+    <span class="s1">conn = sqlite3.connect(</span><span class="s3">'users_db.db'</span><span class="s1">)</span>
+
+    <span class="s2"># Создаем таблицу</span>
+    <span class="s1">cursor = conn.cursor()</span>
+    <span class="s1">cursor.execute(</span><span class="s3">''' 
+    CREATE TABLE IF NOT EXISTS users ( 
+        id INTEGER PRIMARY KEY, 
+        telegram_id INTEGER UNIQUE, 
+        full_name TEXT, 
+        birth_date TEXT, 
+        company TEXT, 
+        position TEXT, 
+        avatar_url TEXT 
+    ) 
+    '''</span><span class="s1">)</span>
+
+    <span class="s2"># Применяем (коммитим) изменения и закрываем соединение</span>
+    <span class="s1">conn.commit()</span>
+    <span class="s1">conn.close()</span>
+
+<span class="s1">create_database()</span>
+
+
+<span class="s0">import </span><span class="s1">telebot</span>
+<span class="s0">import </span><span class="s1">sqlite3</span>
+<span class="s0">from </span><span class="s1">telebot.types </span><span class="s0">import </span><span class="s1">InlineKeyboardMarkup</span><span class="s0">, </span><span class="s1">InlineKeyboardButton</span>
+
+<span class="s1">TOKEN = </span><span class="s3">'6617423966:AAFoXM9Sc3cgBkYN1Fv1TbRgS3Lh2fp_Q7c'</span>
+<span class="s1">bot = telebot.TeleBot(TOKEN)</span>
+
+<span class="s2"># Словарь для временного хранения данных пользователей</span>
+<span class="s1">user_data = {}</span>
+
+<span class="s1">@bot.message_handler(commands=[</span><span class="s3">'start'</span><span class="s1">])</span>
+<span class="s0">def </span><span class="s1">start_message(message):</span>
+    <span class="s1">msg = bot.send_message(message.chat.id</span><span class="s0">, </span><span class="s3">&quot;Введите ваше ФИО:&quot;</span><span class="s1">)</span>
+    <span class="s1">bot.register_next_step_handler(msg</span><span class="s0">, </span><span class="s1">process_full_name_step)</span>
+
+<span class="s0">def </span><span class="s1">process_full_name_step(message):</span>
+    <span class="s1">user_data[message.chat.id] = {</span><span class="s3">'full_name'</span><span class="s1">: message.text}</span>
+    <span class="s1">msg = bot.send_message(message.chat.id</span><span class="s0">, </span><span class="s3">&quot;Введите вашу дату рождения (дд.мм.гггг):&quot;</span><span class="s1">)</span>
+    <span class="s1">bot.register_next_step_handler(msg</span><span class="s0">, </span><span class="s1">process_birth_date_step)</span>
+
+<span class="s0">def </span><span class="s1">process_birth_date_step(message):</span>
+    <span class="s1">user_data[message.chat.id][</span><span class="s3">'birth_date'</span><span class="s1">] = message.text</span>
+    <span class="s1">msg = bot.send_message(message.chat.id</span><span class="s0">, </span><span class="s3">&quot;Введите название вашей компании:&quot;</span><span class="s1">)</span>
+    <span class="s1">bot.register_next_step_handler(msg</span><span class="s0">, </span><span class="s1">process_company_step)</span>
+
+<span class="s0">def </span><span class="s1">process_company_step(message):</span>
+    <span class="s1">user_data[message.chat.id][</span><span class="s3">'company'</span><span class="s1">] = message.text</span>
+    <span class="s1">msg = bot.send_message(message.chat.id</span><span class="s0">, </span><span class="s3">&quot;Введите вашу должность:&quot;</span><span class="s1">)</span>
+    <span class="s1">bot.register_next_step_handler(msg</span><span class="s0">, </span><span class="s1">process_position_step)</span>
+
+<span class="s0">def </span><span class="s1">process_position_step(message):</span>
+    <span class="s1">user_data[message.chat.id][</span><span class="s3">'position'</span><span class="s1">] = message.text</span>
+
+    <span class="s2"># Получение аватарки пользователя</span>
+    <span class="s1">user_info = bot.get_user_profile_photos(message.chat.id)</span>
+    <span class="s0">if </span><span class="s1">user_info </span><span class="s0">and </span><span class="s1">user_info.total_count &gt; </span><span class="s4">0</span><span class="s1">:</span>
+        <span class="s1">user_data[message.chat.id][</span><span class="s3">'avatar_url'</span><span class="s1">] = user_info.photos[</span><span class="s4">0</span><span class="s1">][</span><span class="s4">0</span><span class="s1">].file_id</span>
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s1">user_data[message.chat.id][</span><span class="s3">'avatar_url'</span><span class="s1">] = </span><span class="s0">None</span>
+
+    <span class="s1">save_to_db(user_data[message.chat.id]</span><span class="s0">, </span><span class="s1">message.chat.id)</span>
+    <span class="s1">bot.send_message(message.chat.id</span><span class="s0">, </span><span class="s3">&quot;Ваш профиль успешно создан!&quot;</span><span class="s1">)</span>
+
+<span class="s0">def </span><span class="s1">save_to_db(data</span><span class="s0">, </span><span class="s1">user_id):</span>
+    <span class="s0">with </span><span class="s1">sqlite3.connect(</span><span class="s3">&quot;users_db.db&quot;</span><span class="s1">) </span><span class="s0">as </span><span class="s1">con:</span>
+        <span class="s1">cursor = con.cursor()</span>
+        <span class="s1">cursor.execute(</span><span class="s3">'''INSERT OR REPLACE INTO users (telegram_id, full_name, birth_date, company, position, avatar_url) 
+                          VALUES (?, ?, ?, ?, ?, ?)'''</span><span class="s0">,</span>
+                       <span class="s1">(user_id</span><span class="s0">, </span><span class="s1">data[</span><span class="s3">'full_name'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">data[</span><span class="s3">'birth_date'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">data[</span><span class="s3">'company'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">data[</span><span class="s3">'position'</span><span class="s1">]</span><span class="s0">, </span><span class="s1">data[</span><span class="s3">'avatar_url'</span><span class="s1">]))</span>
+        <span class="s1">con.commit()</span>
+
+<span class="s2">#########</span>
+
+
+<span class="s2">###########</span>
+
+
+
+<span class="s1">@bot.message_handler(commands=[</span><span class="s3">'show_profiles'</span><span class="s1">])</span>
+<span class="s0">def </span><span class="s1">show_profiles(message):</span>
+    <span class="s0">with </span><span class="s1">sqlite3.connect(</span><span class="s3">&quot;users_db.db&quot;</span><span class="s1">) </span><span class="s0">as </span><span class="s1">con:</span>
+        <span class="s1">cursor = con.cursor()</span>
+        <span class="s1">cursor.execute(</span><span class="s3">&quot;SELECT full_name, birth_date, company, position, avatar_url FROM users&quot;</span><span class="s1">)</span>
+
+        <span class="s2">#profiles = cursor.fetchall()</span>
+        <span class="s2">#print(f&quot;Retrieved {len(profiles)} profiles from the database.&quot;)</span>
+        <span class="s2">#for row in profiles:</span>
+
+
+        <span class="s0">for </span><span class="s1">row </span><span class="s0">in </span><span class="s1">cursor.fetchall():</span>
+            <span class="s1">full_name</span><span class="s0">, </span><span class="s1">birth_date</span><span class="s0">, </span><span class="s1">company</span><span class="s0">, </span><span class="s1">position</span><span class="s0">, </span><span class="s1">avatar_url = row</span>
+            <span class="s1">profile_info = </span><span class="s3">f&quot;ФИО: </span><span class="s0">{</span><span class="s1">full_name</span><span class="s0">}\n</span><span class="s3">Дата рождения: </span><span class="s0">{</span><span class="s1">birth_date</span><span class="s0">}\n</span><span class="s3">Компания: </span><span class="s0">{</span><span class="s1">company</span><span class="s0">}\n</span><span class="s3">Должность: </span><span class="s0">{</span><span class="s1">position</span><span class="s0">}</span><span class="s3">&quot;</span>
+            <span class="s1">bot.send_message(message.chat.id</span><span class="s0">, </span><span class="s1">profile_info)</span>
+            <span class="s0">if </span><span class="s1">avatar_url:</span>
+                <span class="s1">bot.send_photo(message.chat.id</span><span class="s0">, </span><span class="s1">avatar_url)</span>
+
+<span class="s2">##profile_info = f&quot;*ФИО:* {full_name}\n*Дата рождения:* {birth_date}\n*Компания:* {company}\n*Должность:* {position}&quot;</span>
+<span class="s2">##bot.send_message(message.chat.id, profile_info, parse_mode='Markdown')</span>
+
+<span class="s1">bot.polling(none_stop=</span><span class="s0">True</span><span class="s1">)</span>
+</pre>
+</body>
+</html>
